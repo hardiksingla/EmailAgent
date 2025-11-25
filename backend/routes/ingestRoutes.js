@@ -43,11 +43,23 @@ async function processSingleEmail(email, catPromptConfig, actionPromptConfig) {
 
     // --- RAG: Chunk & Embed ---
     try {
-      // Simple chunking by paragraphs for now
-      const chunks = email.body.split('\n\n').filter(c => c.trim().length > 0);
+      // Strip HTML tags
+      const plainText = email.body.replace(/<[^>]*>?/gm, '');
+
+      // Chunking strategy: 2000 chars or end of mail
+      const chunks = [];
+      const chunkSize = 2000;
+      
+      for (let i = 0; i < plainText.length; i += chunkSize) {
+        chunks.push(plainText.slice(i, i + chunkSize));
+      }
+
       const points = [];
 
       for (const chunk of chunks) {
+        // Skip empty chunks
+        if (!chunk.trim()) continue;
+
         const vector = await embeddingService.embedText(chunk);
         points.push({
           id: uuidv4(),

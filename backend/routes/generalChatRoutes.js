@@ -3,6 +3,7 @@ const router = express.Router();
 const embeddingService = require('../services/embeddingService');
 const vectorStore = require('../services/vectorStore');
 const llmService = require('../services/llmService');
+const Email = require('../models/Email');
 
 // POST /api/general-chat
 router.post('/', async (req, res) => {
@@ -23,17 +24,34 @@ router.post('/', async (req, res) => {
     let context = "";
     const sources = [];
 
+    // Extract unique email IDs
+    const emailIds = [...new Set(searchResults.map(r => r.payload.emailId))];
+
+    // Fetch full emails
+    const emails = await Email.find({ _id: { $in: emailIds } });
+    const emailMap = new Map(emails.map(e => [e._id.toString(), e]));
+
     searchResults.forEach(result => {
       const payload = result.payload;
-      context += `Subject: ${payload.subject}\nSender: ${payload.sender}\nDate: ${payload.timestamp}\nContent: ${payload.text}\n\n---\n\n`;
-      
-      // Deduplicate sources for frontend display
-      if (!sources.find(s => s.emailId === payload.emailId)) {
-        sources.push({
-          emailId: payload.emailId,
-          subject: payload.subject,
-          sender: payload.sender
-        });
+      const fullEmail = emailMap.get(payload.emailId);
+
+      if (fullEmail) {
+        // Use full email body if available, otherwise fallback to payload text (unlikely)
+        const content = fullEmail.body || payload.text;
+        
+        // Avoid adding the same email multiple times to the context if multiple chunks matched
+        if (!context.includes(`Subject: ${fullEmail.subject}`)) {
+           context += `Subject: ${fullEmail.subject}\nSender: ${fullEmail.sender}\nDate: ${fullEmail.timestamp}\nContent: ${content}\n\n---\n\n`;
+        }
+
+        // Deduplicate sources for frontend display
+        if (!sources.find(s => s.emailId === payload.emailId)) {
+          sources.push({
+            emailId: payload.emailId,
+            subject: payload.subject,
+            sender: payload.sender
+          });
+        }
       }
     });
 
