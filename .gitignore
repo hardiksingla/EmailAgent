@@ -1,0 +1,6 @@
+qdrant_storage
+node_modules
+test_ingest.js
+test_receive.js
+test_chat.js
+.env

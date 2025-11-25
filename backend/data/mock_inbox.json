@@ -1,0 +1,122 @@
+[
+  {
+    "sender": "newsletter@techdaily.com",
+    "subject": "Tech Daily: AI Revolution is Here",
+    "body": "Here are the top stories for today: 1. AI is changing everything. 2. New JS framework released. 3. Python 4.0 rumors.",
+    "timestamp": "2023-10-26T09:00:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "boss@company.com",
+    "subject": "URGENT: Q3 Report Due",
+    "body": "Hi, I need the Q3 report on my desk by Friday 5 PM. Please prioritize this.",
+    "timestamp": "2023-10-26T10:15:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "alice@team.com",
+    "subject": "Lunch tomorrow?",
+    "body": "Hey, want to grab lunch tomorrow at 12:30? There's a new taco place.",
+    "timestamp": "2023-10-26T11:30:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "spam@offers.com",
+    "subject": "You won a cruise!",
+    "body": "Click here to claim your free cruise vacation! Limited time offer.",
+    "timestamp": "2023-10-26T12:00:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "client@bigcorp.com",
+    "subject": "Project Update Meeting",
+    "body": "Can we schedule a meeting for next Tuesday at 2 PM to discuss the project status?",
+    "timestamp": "2023-10-26T13:45:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "hr@company.com",
+    "subject": "Open Enrollment",
+    "body": "It's that time of year again! Open enrollment for benefits starts next week. Please review your options.",
+    "timestamp": "2023-10-26T14:30:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "devops@company.com",
+    "subject": "Server Maintenance",
+    "body": "Scheduled maintenance on Saturday from 2 AM to 4 AM. Services may be intermittent.",
+    "timestamp": "2023-10-26T15:00:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "recruiter@linkedin.com",
+    "subject": "Job Opportunity",
+    "body": "I came across your profile and thought you'd be a great fit for this Senior Developer role...",
+    "timestamp": "2023-10-26T16:20:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "mom@family.com",
+    "subject": "Weekend Plans",
+    "body": "Are you coming home this weekend? Let me know so I can buy groceries.",
+    "timestamp": "2023-10-26T17:10:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "billing@saas.com",
+    "subject": "Invoice #12345",
+    "body": "Your invoice for October is ready. Amount: $49.99. Due date: Nov 1st.",
+    "timestamp": "2023-10-26T18:00:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "newsletter@designweekly.com",
+    "subject": "10 UI Trends for 2024",
+    "body": "Glassmorphism is back? Check out the latest trends in UI design.",
+    "timestamp": "2023-10-27T08:30:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "bob@team.com",
+    "subject": "Code Review Request",
+    "body": "Can you take a look at PR #456? I think I fixed the bug.",
+    "timestamp": "2023-10-27T09:45:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "security@company.com",
+    "subject": "Password Expiration Warning",
+    "body": "Your password will expire in 3 days. Please update it soon.",
+    "timestamp": "2023-10-27T10:15:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "marketing@company.com",
+    "subject": "New Brand Assets",
+    "body": "We have updated our logo and color palette. Please use the new assets attached.",
+    "timestamp": "2023-10-27T11:00:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  },
+  {
+    "sender": "ceo@company.com",
+    "subject": "All Hands Meeting",
+    "body": "Join us for the quarterly all-hands meeting this Friday at 10 AM.",
+    "timestamp": "2023-10-27T13:00:00Z",
+    "isProcessed": false,
+    "status": "Unread"
+  }
+]
