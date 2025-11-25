@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   // baseURL: 'http://localhost:5001/api',
-  baseURL: 'https://emailagent-95h4.onrender.com/',
+  baseURL: 'https://emailagent-95h4.onrender.com/api',
 });
 
 export const fetchEmails = async () => {

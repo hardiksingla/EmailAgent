@@ -2,8 +2,8 @@ const { QdrantClient } = require('@qdrant/js-client-rest');
 
 // Connect to Qdrant (assuming running on localhost:6333 via Docker)
 const client = new QdrantClient({
-    url: 'https://2ae3efdc-c36d-4417-93bb-81b0a9ce35e6.eu-west-1-0.aws.cloud.qdrant.io:6333',
-    apiKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.hx2vy0FK6OvdKGYVw_45MefdKwTryGr5-qyH56wCOtM',
+    url: process.env.QDRANT_URL,
+    apiKey: process.env.QDRANT_API_KEY,
 });
 const COLLECTION_NAME = 'emails';
 
