@@ -99,6 +99,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/emails/:id
+router.get('/:id', async (req, res) => {
+  try {
+    const email = await Email.findById(req.params.id);
+    if (!email) {
+      return res.status(404).json({ error: 'Email not found' });
+    }
+    res.json(email);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch email' });
+  }
+});
+
 // PATCH /api/emails/:id (Update Email)
 router.patch('/:id', async (req, res) => {
   try {

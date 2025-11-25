@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchEmails, chatWithAgent, generateReplies, sendEmail, updateEmail } from '../services/api';
+import { fetchEmailById, generateReply, chatWithAgent, sendEmail } from '../services/api';
 import Layout from '../components/Layout';
-import { ArrowLeft, MessageSquare, Zap, Send, X, Bot, FileText, CheckSquare, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Send, Loader2, User, Clock, Tag, AlertCircle, MessageSquare, X, Bot } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
 const EmailDetail = () => {
@@ -11,37 +10,28 @@ const EmailDetail = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   
-  // Chat State
-  const [messages, setMessages] = useState([
-    { role: 'agent', content: 'Hi! I\'ve analyzed this email. How can I help you?' }
-  ]);
-  const [input, setInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false); // Collapsible state
-  const messagesEndRef = useRef(null);
-
   // Reply State
+  const [reply, setReply] = useState('');
   const [replyOptions, setReplyOptions] = useState(null);
-  const [generatingReplies, setGeneratingReplies] = useState(false);
-  const [selectedReply, setSelectedReply] = useState(null); // For modal
-  const [sending, setSending] = useState(false);
+  const [generatingReply, setGeneratingReply] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+
+  // Chat State
+  const [showChat, setShowChat] = useState(false);
+  const [chatQuery, setChatQuery] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     const loadEmail = async () => {
       try {
-        const allEmails = await fetchEmails();
-        const found = allEmails.find(e => e._id === id);
-        
-        if (found) {
-          setEmail(found);
-        } else {
-          setError('Email not found');
-        }
+        const data = await fetchEmailById(id);
+        setEmail(data);
       } catch (error) {
         console.error('Failed to load email', error);
-        setError('Failed to load email details');
       } finally {
         setLoading(false);
       }
@@ -50,336 +40,358 @@ const EmailDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (showChat && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatHistory, showChat]);
 
-  const handleToggleTodo = async (index) => {
-    if (!email) return;
-    
-    const updatedActionItems = [...email.actionItems];
-    updatedActionItems[index].completed = !updatedActionItems[index].completed;
-    
-    // Optimistic update
-    const previousEmail = { ...email };
-    setEmail({ ...email, actionItems: updatedActionItems });
-
+  const handleGenerateReply = async () => {
+    setGeneratingReply(true);
+    setReplyOptions(null);
     try {
-      await updateEmail(id, { actionItems: updatedActionItems });
+      const response = await generateReply(id);
+      setReplyOptions(response);
+      // Default to professional if available, otherwise first option
+      const defaultReply = response.professional || Object.values(response)[0] || '';
+      setReply(defaultReply);
     } catch (error) {
-      console.error('Failed to update todo', error);
-      // Revert on failure
-      setEmail(previousEmail);
-      alert('Failed to update task status');
+      console.error('Failed to generate reply', error);
+    } finally {
+      setGeneratingReply(false);
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSendReply = async () => {
+    if (!reply.trim()) return;
+    setSendingEmail(true);
+    try {
+        await sendEmail({
+            to: email.sender, // Assuming sender is the email address for now
+            subject: `Re: ${email.subject}`,
+            body: reply,
+            emailId: id
+        });
+        // alert('Reply sent successfully!');
+        navigate('/');
+    } catch (error) {
+        console.error('Failed to send reply', error);
+        // alert('Failed to send reply.');
+    } finally {
+        setSendingEmail(false);
+    }
+  };
 
-    const userMsg = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+  const handleQuickQuestion = async (question) => {
+    const userMessage = { role: 'user', content: question };
+    setChatHistory(prev => [...prev, userMessage]);
     setChatLoading(true);
 
     try {
-      const data = await chatWithAgent(input, id);
-      const agentMsg = { role: 'agent', content: data.response };
-      setMessages(prev => [...prev, agentMsg]);
+      const data = await chatWithAgent(userMessage.content, id);
+      const botMessage = { role: 'assistant', content: data.response };
+      setChatHistory(prev => [...prev, botMessage]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'agent', content: 'Sorry, I encountered an error.' }]);
+      console.error('Chat failed', error);
+      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error.' }]);
     } finally {
       setChatLoading(false);
     }
   };
 
-  const handleGenerateReplies = async () => {
-    setGeneratingReplies(true);
-    try {
-      const replies = await generateReplies(id);
-      setReplyOptions(replies);
-    } catch (error) {
-      console.error('Failed to generate replies', error);
-      alert('Failed to generate replies.');
-    } finally {
-      setGeneratingReplies(false);
-    }
-  };
-
-  const openReplyModal = (type, content) => {
-    setSelectedReply({ type, content });
-  };
-
-  const handleSendEmail = async () => {
-    if (!selectedReply) return;
-    setSending(true);
-    try {
-      await sendEmail({
-        to: email.sender, // Assuming sender is email address for now
-        subject: `Re: ${email.subject}`,
-        body: selectedReply.content,
-        emailId: id
-      });
-      // alert('Email sent successfully!');
-      setSelectedReply(null);
-      setReplyOptions(null);
-      // Ideally refresh email status here
-    } catch (error) {
-      console.error('Failed to send email', error);
-      alert('Failed to send email.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleQuickAction = (action) => {
-    let query = '';
-    if (action === 'summarize') query = 'Summarize this email for me.';
-    if (action === 'tasks') query = 'What are the action items and deadlines?';
-    if (action === 'reply') query = 'Draft a professional reply to this email.';
+  const handleChatSubmit = async (e) => {
+    e.preventDefault();
+    if (!chatQuery.trim()) return;
     
-    setInput(query);
-    // Trigger send immediately for better UX
-    setTimeout(() => sendQuery(query), 0);
+    const query = chatQuery;
+    setChatQuery(''); // Clear input immediately
+    await handleQuickQuestion(query);
   };
 
-  const sendQuery = async (query) => {
-    const userMsg = { role: 'user', content: query };
-    setMessages(prev => [...prev, userMsg]);
-    setChatLoading(true);
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex flex-col justify-center items-center h-full">
+            <div className="relative">
+                <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 bg-indigo-500/20 rounded-full blur-md"></div>
+                </div>
+            </div>
+        </div>
+      </Layout>
+    );
+  }
 
-    try {
-      const data = await chatWithAgent(query, id);
-      const agentMsg = { role: 'agent', content: data.response };
-      setMessages(prev => [...prev, agentMsg]);
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'agent', content: 'Sorry, I encountered an error.' }]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  if (loading) return (
-    <Layout>
-      <div className="flex justify-center items-center h-full">
-        <Loader2 className="animate-spin text-indigo-500" size={48} />
-      </div>
-    </Layout>
-  );
-
-  if (error || !email) return (
-    <Layout>
-      <div className="flex flex-col justify-center items-center h-full text-slate-400">
-        <p className="text-xl mb-4">{error || 'Email not found'}</p>
-        <button onClick={() => navigate('/')} className="text-indigo-400 hover:text-indigo-300 flex items-center">
-          <ArrowLeft className="mr-2" size={20} /> Back to Inbox
-        </button>
-      </div>
-    </Layout>
-  );
+  if (!email) {
+    return (
+      <Layout>
+        <div className="p-8 text-center">
+          <h2 className="text-2xl font-bold text-slate-200">Email not found</h2>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-4 text-indigo-400 hover:text-indigo-300"
+          >
+            Return to Inbox
+          </button>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className="flex h-full overflow-hidden bg-slate-950">
-        {/* Left: Email Content */}
-        <div className={`transition-all duration-300 ease-in-out ${isChatOpen ? 'w-1/2' : 'w-full'} border-r border-slate-800 p-8 overflow-y-auto`}>
-          <div className="flex justify-between items-center mb-6">
-            <button onClick={() => navigate('/')} className="text-slate-400 hover:text-white flex items-center transition-colors group">
-              <ArrowLeft className="group-hover:-translate-x-1 transition-transform mr-2" size={20} /> Back to Inbox
+      <div className="p-6 max-w-[1600px] mx-auto h-full flex flex-col relative">
+        {/* Top Navigation Bar */}
+        <div className="flex justify-between items-center mb-6">
+            <button
+                onClick={() => navigate('/')}
+                className="flex items-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors group px-4 py-2 rounded-xl hover:bg-[var(--card-bg)] border border-transparent hover:border-[var(--border-color)]"
+            >
+                <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                <span className="font-medium">Back to Inbox</span>
             </button>
-            {!isChatOpen && (
-              <button onClick={() => setIsChatOpen(true)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 hover:bg-indigo-500/20 transition-all">
-                <MessageSquare className="mr-2" size={16} /> Open Assistant
-              </button>
-            )}
-          </div>
-          
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-100 mb-3 tracking-tight">{email.subject}</h1>
-            <div className="flex justify-between items-center text-sm text-slate-400 border-b border-slate-800 pb-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-bold">
-                  {email.sender[0].toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-slate-200 font-medium">{email.sender}</p>
-                  <p className="text-xs text-slate-500">To: You</p>
-                </div>
-              </div>
-              <p>{new Date(email.timestamp).toLocaleString()}</p>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">{email.category}</span>
-              {email.isProcessed && <span className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Processed by AI</span>}
-            </div>
-          </div>
 
-          <div 
-            className="bg-white text-slate-900 p-6 rounded-xl shadow-sm overflow-auto max-w-none mb-10 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.body) }}
-          />
-
-          {/* Action Items */}
-          {email.actionItems && email.actionItems.length > 0 && (
-            <div className="mb-10 p-6 bg-slate-900/50 rounded-xl border border-slate-800">
-              <h3 className="text-sm font-semibold text-amber-400 mb-4 uppercase tracking-wider flex items-center">
-                <Zap className="mr-2" size={16} /> Action Items
-              </h3>
-              <ul className="space-y-3">
-                {email.actionItems.map((item, idx) => (
-                  <li key={idx} className={`flex items-start p-3 rounded-lg transition-colors ${item.completed ? 'bg-slate-800/30 opacity-50' : 'hover:bg-slate-800/50'}`}>
-                    <input 
-                      type="checkbox" 
-                      checked={item.completed || false}
-                      onChange={() => handleToggleTodo(idx)}
-                      className="mt-1 mr-3 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-offset-slate-900 cursor-pointer" 
-                    />
-                    <div className={item.completed ? 'line-through text-slate-500' : ''}>
-                      <p className="text-sm text-slate-200 font-medium">{item.task}</p>
-                      {item.deadline && item.deadline !== 'None' && (
-                        <p className="text-xs text-rose-400 mt-1 font-medium">Due: {item.deadline}</p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Reply Section */}
-          <div className="border-t border-slate-800 pt-8">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-slate-200">Quick Replies</h3>
-              <button 
-                onClick={handleGenerateReplies}
-                disabled={generatingReplies}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
-              >
-                {generatingReplies ? 'Generating...' : '✨ Generate Options'}
-              </button>
-            </div>
-
-            {replyOptions && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {Object.entries(replyOptions).map(([type, content]) => (
-                  <div 
-                    key={type} 
-                    onClick={() => openReplyModal(type, content)}
-                    className="p-5 bg-slate-900 border border-slate-800 rounded-xl hover:border-indigo-500/50 cursor-pointer transition-all group hover:shadow-lg hover:shadow-indigo-500/5"
-                  >
-                    <h4 className="text-indigo-400 font-medium capitalize mb-2 group-hover:text-indigo-300">{type}</h4>
-                    <p className="text-slate-400 text-sm line-clamp-4 leading-relaxed">{content}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            <button
+                onClick={() => setShowChat(!showChat)}
+                className={`flex items-center px-4 py-2 rounded-xl border transition-all ${
+                    showChat 
+                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' 
+                    : 'bg-[var(--card-bg)] text-[var(--text-primary)] border-[var(--border-color)] hover:bg-[var(--border-color)]'
+                }`}
+            >
+                {showChat ? <X className="h-4 w-4 mr-2" /> : <MessageSquare className="h-4 w-4 mr-2" />}
+                <span className="font-medium">{showChat ? 'Close Chat' : 'Ask AI about this email'}</span>
+            </button>
         </div>
 
-        {/* Right: Agent Chat (Collapsible) */}
-        <div className={`transition-all duration-300 ease-in-out flex flex-col bg-slate-900 border-l border-slate-800 ${isChatOpen ? 'w-1/2 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none'}`}>
-          <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/95 backdrop-blur min-w-[300px]">
-            <h2 className="font-semibold text-slate-200 flex items-center">
-              <span className="mr-2 text-xl">🤖</span> Agent Assistant
-            </h2>
-            <div className="flex items-center space-x-2">
-              <div className="flex space-x-1 mr-2">
-                <button onClick={() => handleQuickAction('summarize')} className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-slate-300 transition-colors">Summarize</button>
-                <button onClick={() => handleQuickAction('tasks')} className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-slate-300 transition-colors">Tasks</button>
-              </div>
-              <button onClick={() => setIsChatOpen(false)} className="text-slate-500 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 min-w-[300px] bg-slate-950/30">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-indigo-600 text-white rounded-br-none' 
-                    : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'
-                }`}>
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+            {/* Email Header Card */}
+            <div className="glass-card p-6 rounded-3xl relative overflow-hidden shrink-0">
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <User className="w-48 h-48 text-indigo-500" />
                 </div>
-              </div>
-            ))}
-            {chatLoading && (
-              <div className="flex justify-start">
-                <div className="bg-slate-800 p-4 rounded-2xl rounded-bl-none border border-slate-700">
-                  <div className="flex space-x-1.5">
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-75"></div>
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-150"></div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+                
+                <div className="relative z-10">
+                    <div className="flex flex-wrap gap-3 mb-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            {email.category || 'Uncategorized'}
+                        </span>
+                        {email.actionItems && email.actionItems.length > 0 && (
+                             <div className="relative">
+                                <button 
+                                    onClick={() => setShowActions(!showActions)}
+                                    className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                >
+                                    <AlertCircle className="w-3 h-3 mr-1" /> {email.actionItems.length} Actions
+                                </button>
+                                {showActions && (
+                                    <div className="absolute top-full left-0 mt-2 w-64 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl shadow-xl z-50 p-3 animate-in fade-in zoom-in-95 duration-200">
+                                        <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Action Items</h4>
+                                        <ul className="space-y-2">
+                                            {email.actionItems.map((item, idx) => (
+                                                <li key={idx} className="text-sm text-[var(--text-primary)] flex items-start">
+                                                    <span className="mr-2 text-amber-500">•</span>
+                                                    {typeof item === 'string' ? item : item.task || JSON.stringify(item)}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                             </div>
+                        )}
+                    </div>
 
-          <div className="p-4 border-t border-slate-800 bg-slate-900 min-w-[300px]">
-            <div className="flex items-center bg-slate-950 rounded-xl border border-slate-700 px-4 py-3 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all shadow-inner">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask about this email..."
-                className="flex-1 bg-transparent border-none focus:ring-0 text-slate-200 placeholder-slate-500 text-sm"
-              />
-              <button 
-                onClick={handleSend}
-                disabled={!input.trim() || chatLoading}
-                className="ml-2 text-indigo-500 hover:text-indigo-400 disabled:opacity-50 p-1"
-              >
-                <Send size={18} />
-              </button>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4 leading-tight">
+                        {email.subject || '(No Subject)'}
+                    </h1>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-[var(--border-color)] pt-4 gap-4">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-base shadow-lg shrink-0">
+                                {email.sender ? email.sender.charAt(0).toUpperCase() : '?'}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-base font-semibold text-[var(--text-primary)] truncate">{email.sender || 'Unknown Sender'}</p>
+                                <p className="text-xs text-[var(--text-secondary)]">To: Me</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center text-[var(--text-secondary)] bg-[var(--bg-app)] px-3 py-1.5 rounded-lg border border-[var(--border-color)] w-fit text-sm">
+                            <Clock className="h-3.5 w-3.5 mr-2 shrink-0" />
+                            <span className="font-medium">
+                                {email.timestamp ? new Date(email.timestamp).toLocaleString() : 'Date unknown'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
+
+            {/* Main Grid */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 relative">
+                {/* Email Content */}
+                <div className={`glass-card p-8 rounded-3xl overflow-y-auto custom-scrollbar bg-[var(--card-bg)] min-h-[400px] transition-all duration-300 ${showChat ? 'lg:col-span-1' : 'lg:col-span-2'}`}>
+                    {email.body ? (
+                        <div 
+                            className="prose prose-invert max-w-none prose-headings:text-[var(--text-primary)] prose-p:text-[var(--text-primary)] prose-a:text-indigo-400 prose-strong:text-[var(--text-primary)] prose-li:text-[var(--text-primary)]"
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.body) }}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                            <div className="w-20 h-20 mb-6 rounded-full bg-[var(--bg-app)] border border-[var(--border-color)] flex items-center justify-center shadow-inner">
+                                <span className="text-4xl opacity-50">📄</span>
+                            </div>
+                            <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">No Content Available</h3>
+                            <p className="text-[var(--text-secondary)] max-w-xs mx-auto">
+                                This email appears to be empty or the content could not be loaded.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Chat Panel (Conditionally Rendered/Visible) */}
+                {showChat && (
+                    <div className="lg:col-span-1 glass-card flex flex-col rounded-3xl border border-indigo-500/20 overflow-hidden animate-in slide-in-from-right duration-300">
+                        <div className="p-4 border-b border-[var(--border-color)] bg-[var(--bg-app)] flex items-center">
+                            <Bot className="h-5 w-5 text-indigo-400 mr-2" />
+                            <h3 className="font-bold text-[var(--text-primary)]">Email Assistant</h3>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-[var(--glass-bg)]">
+                            {chatHistory.length === 0 && (
+                                <div className="text-center text-[var(--text-secondary)] mt-10 px-4">
+                                    <p className="mb-4 font-medium">Ask me anything about this email!</p>
+                                    <div className="flex flex-col gap-2">
+                                        {[
+                                            "Summarize this email",
+                                            "What are the action items?",
+                                            "Draft a professional reply",
+                                            "Who is the sender?"
+                                        ].map((question, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => {
+                                                    setChatQuery(question);
+                                                    // We need to trigger the submit manually since state update is async
+                                                    // But handleChatSubmit uses chatQuery state. 
+                                                    // Better to refactor handleChatSubmit or just set state and let user press enter?
+                                                    // User asked for "quick chat buttons", implying one-click.
+                                                    // I'll create a helper or modify handleChatSubmit to accept an argument.
+                                                    handleQuickQuestion(question);
+                                                }}
+                                                className="text-xs py-2 px-3 rounded-xl bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-indigo-500/10 hover:text-indigo-400 hover:border-indigo-500/30 transition-all text-left"
+                                            >
+                                                "{question}"
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {chatHistory.map((msg, idx) => (
+                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                                        msg.role === 'user' 
+                                        ? 'bg-indigo-600 text-white' 
+                                        : 'bg-[var(--card-bg)] text-[var(--text-primary)] border border-[var(--border-color)]'
+                                    }`}>
+                                        {msg.content}
+                                    </div>
+                                </div>
+                            ))}
+                            {chatLoading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-[var(--card-bg)] rounded-2xl px-4 py-2 border border-[var(--border-color)]">
+                                        <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+                        <div className="p-4 bg-[var(--bg-app)] border-t border-[var(--border-color)]">
+                            <form onSubmit={handleChatSubmit} className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={chatQuery}
+                                    onChange={(e) => setChatQuery(e.target.value)}
+                                    placeholder="Ask a question..."
+                                    className="flex-1 bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                />
+                                <button type="submit" disabled={chatLoading} className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-colors disabled:opacity-50">
+                                    <Send className="h-4 w-4" />
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* AI Reply Section */}
+                <div className={`glass-card p-1 rounded-3xl flex flex-col bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 h-full ${showChat ? 'lg:col-span-1' : 'lg:col-span-1'}`}>
+                    <div className="flex-1 bg-[var(--glass-bg)] backdrop-blur-xl rounded-[22px] p-6 flex flex-col h-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center">
+                                <Sparkles className="w-5 h-5 mr-2 text-indigo-400" />
+                                AI Reply
+                            </h3>
+                            <button
+                                onClick={handleGenerateReply}
+                                disabled={generatingReply}
+                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            >
+                                {generatingReply ? (
+                                    <>
+                                        <Loader2 className="w-3 h-3 mr-2 animate-spin" /> Generating...
+                                    </>
+                                ) : (
+                                    'Generate Drafts'
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Reply Options */}
+                        {replyOptions && (
+                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+                                {Object.keys(replyOptions).map((key) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setReply(replyOptions[key])}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize whitespace-nowrap transition-all border ${
+                                            reply === replyOptions[key]
+                                            ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
+                                            : 'bg-[var(--card-bg)] text-[var(--text-secondary)] border-[var(--border-color)] hover:text-[var(--text-primary)]'
+                                        }`}
+                                    >
+                                        {key.replace(/_/g, ' ')}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex-1 bg-[var(--bg-app)] rounded-xl border border-[var(--border-color)] p-4 mb-4 relative group min-h-[200px]">
+                            <textarea
+                                className="w-full h-full bg-transparent border-none resize-none focus:ring-0 text-[var(--text-primary)] placeholder-[var(--text-secondary)] leading-relaxed text-sm"
+                                placeholder="AI generated reply will appear here..."
+                                value={reply}
+                                onChange={(e) => setReply(e.target.value)}
+                            ></textarea>
+                            {!reply && !generatingReply && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <p className="text-[var(--text-secondary)] text-sm">Click "Generate Drafts" to start</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button 
+                                onClick={handleSendReply}
+                                disabled={sendingEmail || !reply}
+                                className="w-full px-6 py-3 bg-white text-midnight-950 font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                                {sendingEmail ? 'Sending...' : 'Send Reply'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
       </div>
-
-      {/* Full Screen Reply Modal */}
-      {selectedReply && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-8 animate-in fade-in duration-200">
-          <div className="bg-slate-900 w-full max-w-5xl h-[85vh] rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden ring-1 ring-white/10">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900">
-              <div>
-                <h2 className="text-xl font-bold text-slate-100">Edit Reply</h2>
-                <p className="text-sm text-indigo-400 capitalize font-medium mt-1">{selectedReply.type} Draft</p>
-              </div>
-              <button onClick={() => setSelectedReply(null)} className="text-slate-500 hover:text-white text-2xl transition-colors"><X size={24} /></button>
-            </div>
-            
-            <div className="flex-1 p-8 bg-slate-950">
-              <textarea
-                value={selectedReply.content}
-                onChange={(e) => setSelectedReply({ ...selectedReply, content: e.target.value })}
-                className="w-full h-full bg-transparent text-slate-300 text-lg leading-relaxed focus:outline-none resize-none font-sans placeholder-slate-700"
-                placeholder="Type your reply here..."
-              />
-            </div>
-
-            <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-end space-x-4">
-              <button 
-                onClick={() => setSelectedReply(null)}
-                className="px-6 py-3 rounded-lg text-slate-400 hover:text-white font-medium transition-colors hover:bg-slate-800"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSendEmail}
-                disabled={sending}
-                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold shadow-lg shadow-indigo-500/30 flex items-center transition-all hover:scale-[1.02]"
-              >
-                {sending ? 'Sending...' : <><Send className="mr-2" size={18} /> Send Reply</>}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </Layout>
   );
 };

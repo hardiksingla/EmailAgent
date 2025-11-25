@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // baseURL: 'http://localhost:5001/api',
-  baseURL: 'https://emailagent-95h4.onrender.com/api',
+  baseURL: 'http://localhost:5001/api',
+  // baseURL: 'https://emailagent-95h4.onrender.com/api',
 });
 
 export const fetchEmails = async () => {
@@ -42,6 +42,16 @@ export const updatePrompt = async (id, templateContent) => {
 
 export const generateReplies = async (emailId) => {
   const response = await api.post('/emails/generate-replies', { emailId });
+  return response.data;
+};
+
+export const generateReply = async (emailId) => {
+  const response = await api.post('/emails/generate-replies', { emailId });
+  return response.data; // Returns { professional: "...", casual: "...", ... }
+};
+
+export const fetchEmailById = async (id) => {
+  const response = await api.get(`/emails/${id}`);
   return response.data;
 };
 

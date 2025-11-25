@@ -45,25 +45,25 @@ const GeneralChat = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col h-full bg-slate-950">
+      <div className="flex flex-col h-full bg-[var(--bg-app)]">
         {/* Header */}
-        <div className="p-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md">
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center">
+        <div className="p-6 border-b border-[var(--border-color)] bg-[var(--glass-bg)] backdrop-blur-md sticky top-0 z-10">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center">
             <Bot className="mr-3 text-indigo-500" size={28} /> 
             General Assistant
           </h1>
-          <p className="text-slate-400 text-sm mt-1 ml-10">Ask questions across your entire inbox</p>
+          <p className="text-[var(--text-secondary)] text-sm mt-1 ml-10">Ask questions across your entire inbox</p>
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] flex ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                 
                 {/* Avatar */}
                 <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                  msg.role === 'user' ? 'bg-indigo-600 ml-4' : 'bg-slate-800 mr-4'
+                  msg.role === 'user' ? 'bg-indigo-600 ml-4' : 'bg-[var(--card-bg)] border border-[var(--border-color)] mr-4'
                 }`}>
                   {msg.role === 'user' ? <User size={20} className="text-white" /> : <Bot size={20} className="text-indigo-400" />}
                 </div>
@@ -72,14 +72,14 @@ const GeneralChat = () => {
                 <div className={`p-5 rounded-2xl shadow-sm ${
                   msg.role === 'user' 
                     ? 'bg-indigo-600 text-white rounded-tr-none' 
-                    : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                    : 'glass-card text-[var(--text-primary)] rounded-tl-none'
                 }`}>
                   <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{msg.content}</p>
                   
                   {/* Sources */}
                   {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-700/50">
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center">
+                    <div className="mt-4 pt-4 border-t border-[var(--border-color)]">
+                      <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 flex items-center">
                         <Mail size={12} className="mr-1.5" /> Sources
                       </p>
                       <div className="space-y-2">
@@ -87,12 +87,12 @@ const GeneralChat = () => {
                           <div 
                             key={sIdx}
                             onClick={() => navigate(`/email/${source.emailId}`)}
-                            className="flex items-center p-2 rounded bg-slate-800/50 hover:bg-slate-800 cursor-pointer transition-colors border border-slate-700/50 hover:border-indigo-500/30 group"
+                            className="flex items-center p-2 rounded bg-[var(--bg-app)] hover:bg-[var(--border-color)] cursor-pointer transition-colors border border-[var(--border-color)] hover:border-indigo-500/30 group"
                           >
                             <div className="w-1 h-full bg-indigo-500 rounded-full mr-3 opacity-50 group-hover:opacity-100 transition-opacity"></div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-indigo-300 truncate group-hover:text-indigo-200">{source.subject}</p>
-                              <p className="text-xs text-slate-500 truncate">From: {source.sender}</p>
+                              <p className="text-sm font-medium text-indigo-400 truncate group-hover:text-indigo-500">{source.subject}</p>
+                              <p className="text-xs text-[var(--text-secondary)] truncate">From: {source.sender}</p>
                             </div>
                           </div>
                         ))}
@@ -106,11 +106,11 @@ const GeneralChat = () => {
           
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-slate-900 p-4 rounded-2xl rounded-tl-none border border-slate-800 ml-14">
+              <div className="bg-[var(--card-bg)] p-4 rounded-2xl rounded-tl-none border border-[var(--border-color)] ml-14">
                 <div className="flex space-x-1.5">
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-75"></div>
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-150"></div>
+                  <div className="w-2 h-2 bg-[var(--text-secondary)] rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-[var(--text-secondary)] rounded-full animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 bg-[var(--text-secondary)] rounded-full animate-bounce delay-150"></div>
                 </div>
               </div>
             </div>
@@ -119,7 +119,7 @@ const GeneralChat = () => {
         </div>
 
         {/* Input Area */}
-        <div className="p-6 bg-slate-900 border-t border-slate-800">
+        <div className="p-6 bg-[var(--card-bg)] border-t border-[var(--border-color)]">
           <div className="max-w-4xl mx-auto relative">
             <input
               type="text"
@@ -127,7 +127,7 @@ const GeneralChat = () => {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Ask a question about your emails..."
-              className="w-full bg-slate-950 border border-slate-700 text-slate-200 rounded-xl py-4 pl-6 pr-14 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 shadow-inner transition-all placeholder-slate-500"
+              className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl py-4 pl-6 pr-14 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 shadow-inner transition-all placeholder-[var(--text-secondary)]"
             />
             <button 
               onClick={handleSend}
@@ -137,7 +137,7 @@ const GeneralChat = () => {
               {loading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
             </button>
           </div>
-          <p className="text-center text-xs text-slate-600 mt-3">
+          <p className="text-center text-xs text-[var(--text-secondary)] mt-3">
             AI can make mistakes. Please verify important information.
           </p>
         </div>

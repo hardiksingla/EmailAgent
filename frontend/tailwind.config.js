@@ -7,26 +7,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        gray: {
-          900: '#0f172a', // Slate 900
-          800: '#1e293b', // Slate 800
-          700: '#334155', // Slate 700
-          600: '#475569', // Slate 600
-          500: '#64748b', // Slate 500
-          400: '#94a3b8', // Slate 400
-          300: '#cbd5e1', // Slate 300
-          200: '#e2e8f0', // Slate 200
-          100: '#f1f5f9', // Slate 100
+        // Midnight Palette
+        midnight: {
+          950: '#020617', // Deepest background
+          900: '#0f172a', // Sidebar / Cards
+          800: '#1e293b', // Lighter elements
+          700: '#334155', // Borders
         },
         primary: {
           500: '#6366f1', // Indigo 500
           600: '#4f46e5', // Indigo 600
           400: '#818cf8', // Indigo 400
           300: '#a5b4fc', // Indigo 300
+        },
+        accent: {
+          glow: '#818cf8', // Glow color
         }
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       }
     },
   },

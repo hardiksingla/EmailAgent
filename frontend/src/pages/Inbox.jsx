@@ -2,13 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchEmails, ingestEmails } from '../services/api';
 import Layout from '../components/Layout';
-import { Sparkles, Loader2, AlertTriangle, Mail } from 'lucide-react';
+import { Sparkles, Loader2, AlertTriangle, Mail, Search, Filter, RefreshCw } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
 const Inbox = () => {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+
+  const categories = ['All', 'Important', 'Work', 'Personal', 'Newsletter', 'Spam'];
+
+  const filteredEmails = emails.filter(email => {
+    const matchesSearch = (
+      email.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.sender?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.body?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    const matchesCategory = filterCategory === 'All' || email.category?.toLowerCase() === filterCategory.toLowerCase();
+    return matchesSearch && matchesCategory;
+  });
 
   const loadEmails = async () => {
     setLoading(true);
@@ -40,10 +56,10 @@ const Inbox = () => {
 
   const getCategoryColor = (category) => {
     switch (category?.toLowerCase()) {
-      case 'important': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-      case 'newsletter': return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
-      case 'work': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
-      case 'personal': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'important': return 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.1)]';
+      case 'newsletter': return 'bg-sky-500/10 text-sky-400 border-sky-500/20 shadow-[0_0_10px_rgba(14,165,233,0.1)]';
+      case 'work': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.1)]';
+      case 'personal': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]';
       case 'spam': return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
       default: return 'bg-slate-700/30 text-slate-300 border-slate-600/30';
     }
@@ -51,85 +67,141 @@ const Inbox = () => {
 
   return (
     <Layout>
-      <div className="p-8 max-w-6xl mx-auto">
-        <header className="flex justify-between items-center mb-8">
+      <div className="p-8 max-w-7xl mx-auto">
+        {/* Header Section */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-slate-100 tracking-tight">Inbox</h2>
-            <p className="text-slate-400 mt-1">Manage your emails with AI assistance</p>
+            <h2 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight mb-2">Inbox</h2>
+            <p className="text-[var(--text-secondary)] font-medium">Manage your emails with AI assistance</p>
           </div>
-          {/* <button
-            onClick={handleIngest}
-            disabled={processing}
-            className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center border ${
-              processing
-                ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/20 hover:scale-[1.02]'
-            }`}
-          >
-            {processing ? (
-              <>
-                <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-5 w-5" /> Process New Emails
-              </>
-            )}
-          </button> */}
+          
+          <div className="flex items-center space-x-3">
+             <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
+             </div>
+          </div>
         </header>
 
+        {/* Search & Filter Bar */}
+        <div className="mb-8 flex items-center space-x-4 relative z-20">
+            <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--text-secondary)] h-5 w-5" />
+                <input 
+                    type="text" 
+                    placeholder="Search emails..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl py-3 pl-12 pr-4 text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                />
+            </div>
+            <div className="relative">
+                <button 
+                    onClick={() => setShowFilterMenu(!showFilterMenu)}
+                    className={`p-3 border rounded-xl transition-colors flex items-center gap-2 ${
+                        filterCategory !== 'All' 
+                        ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' 
+                        : 'bg-[var(--card-bg)] border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-color)]'
+                    }`}
+                >
+                    <Filter className="h-5 w-5" />
+                    {filterCategory !== 'All' && <span className="text-sm font-medium">{filterCategory}</span>}
+                </button>
+                
+                {showFilterMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                        {categories.map(category => (
+                            <button
+                                key={category}
+                                onClick={() => {
+                                    setFilterCategory(category);
+                                    setShowFilterMenu(false);
+                                }}
+                                className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
+                                    filterCategory === category 
+                                    ? 'bg-indigo-500/10 text-indigo-400' 
+                                    : 'text-[var(--text-secondary)] hover:bg-[var(--border-color)] hover:text-[var(--text-primary)]'
+                                }`}
+                            >
+                                {category}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          <div className="flex flex-col justify-center items-center h-64">
+            <div className="relative">
+                <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 bg-indigo-500/20 rounded-full blur-md"></div>
+                </div>
+            </div>
+            <p className="mt-4 text-[var(--text-secondary)] font-medium animate-pulse">Loading your inbox...</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {emails.map((email) => (
+          <div className="space-y-4">
+            {filteredEmails.map((email) => (
               <Link
                 key={email._id}
                 to={`/email/${email._id}`}
                 className="block group"
               >
-                <div className="bg-slate-900/50 backdrop-blur-sm p-5 rounded-xl border border-slate-800 hover:border-indigo-500/50 transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                <div className="glass-card p-6 rounded-2xl relative overflow-hidden group-hover:-translate-y-1 transition-transform duration-300">
+                  {/* Hover Glow Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/0 to-indigo-500/0 group-hover:via-indigo-500/5 transition-all duration-500"></div>
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center space-x-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getCategoryColor(email.category)}`}>
-                        {email.category || 'Uncategorized'}
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide border ${getCategoryColor(email.category)}`}>
+                          {email.category || 'Uncategorized'}
+                        </span>
+                        {email.status === 'Unread' && (
+                          <span className="flex h-3 w-3 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-[var(--text-secondary)] font-medium bg-[var(--bg-app)] px-2 py-1 rounded-lg border border-[var(--border-color)]">
+                        {new Date(email.timestamp).toLocaleDateString()}
                       </span>
-                      {email.status === 'Unread' && (
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
-                      )}
                     </div>
-                    <span className="text-xs text-slate-500 font-medium">
-                      {new Date(email.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                  
-                  <h3 className="text-lg font-semibold text-slate-200 mb-1 group-hover:text-indigo-400 transition-colors">
-                    {email.subject}
-                  </h3>
-                  
-                  <div className="flex justify-between items-end">
-                    <p className="text-slate-400 text-sm truncate w-3/4">
-                      <span className="font-medium text-slate-300">{email.sender}</span> — {DOMPurify.sanitize(email.body, { ALLOWED_TAGS: [] }).substring(0, 100)}...
-                    </p>
-                    {email.actionItems && email.actionItems.length > 0 && (
-                      <span className="text-xs text-amber-400 flex items-center bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20">
-                        <AlertTriangle className="mr-1 h-3 w-3" /> {email.actionItems.length} Actions
-                      </span>
-                    )}
+                    
+                    <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1 group-hover:text-indigo-400 transition-colors truncate">
+                                {email.subject}
+                            </h3>
+                            <p className="text-sm font-semibold text-indigo-500 mb-2">{email.sender}</p>
+                            <p className="text-[var(--text-secondary)] text-sm line-clamp-2 leading-relaxed">
+                                {DOMPurify.sanitize(email.body, { ALLOWED_TAGS: [] }).substring(0, 150)}...
+                            </p>
+                        </div>
+                        
+                        {email.actionItems && email.actionItems.length > 0 && (
+                            <div className="hidden md:flex flex-col items-end justify-center min-w-[100px]">
+                                <span className="text-xs font-bold text-amber-500 flex items-center bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 shadow-[0_0_10px_rgba(251,191,36,0.1)]">
+                                    <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> {email.actionItems.length} Actions
+                                </span>
+                            </div>
+                        )}
+                    </div>
                   </div>
                 </div>
               </Link>
             ))}
             
-            {emails.length === 0 && (
-              <div className="text-center py-20 text-slate-500 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed">
-                <p className="text-xl font-medium">No emails found</p>
-                <p className="mt-2 text-sm">Try processing new emails to get started.</p>
+            {filteredEmails.length === 0 && (
+              <div className="text-center py-24 glass rounded-3xl border border-dashed border-[var(--border-color)]">
+                <div className="w-20 h-20 bg-[var(--card-bg)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ring-1 ring-white/10">
+                    <Mail className="h-10 w-10 text-[var(--text-secondary)]" />
+                </div>
+                <p className="text-2xl font-bold text-[var(--text-primary)]">No emails found</p>
+                <p className="mt-2 text-[var(--text-secondary)]">Your inbox is completely empty.</p>
               </div>
             )}
           </div>
