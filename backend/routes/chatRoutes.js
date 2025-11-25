@@ -13,7 +13,7 @@ router.post('/', async (req, res) => {
     }
 
     let context = "";
-    let systemPrompt = "You are a helpful email productivity assistant.";
+    let systemPrompt = "You are a helpful email productivity assistant. do not add any * or any other symbol for markdown formatting.";
 
     if (emailId) {
       const email = await Email.findById(emailId);
@@ -26,7 +26,7 @@ router.post('/', async (req, res) => {
         Category: ${email.category}
         Action Items: ${JSON.stringify(email.actionItems)}
         `;
-        systemPrompt += " Answer the user's question based on the email context provided.";
+        systemPrompt += " Answer the user's question based on the email context provided. do not add any * or any other symbol for markdown formatting";
       }
     } else {
         // General inbox context (could be optimized to not fetch everything)

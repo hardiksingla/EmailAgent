@@ -119,7 +119,7 @@ const EmailDetail = () => {
         body: selectedReply.content,
         emailId: id
       });
-      alert('Email sent successfully!');
+      // alert('Email sent successfully!');
       setSelectedReply(null);
       setReplyOptions(null);
       // Ideally refresh email status here

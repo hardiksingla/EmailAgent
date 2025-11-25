@@ -57,7 +57,7 @@ const Inbox = () => {
             <h2 className="text-3xl font-bold text-slate-100 tracking-tight">Inbox</h2>
             <p className="text-slate-400 mt-1">Manage your emails with AI assistance</p>
           </div>
-          <button
+          {/* <button
             onClick={handleIngest}
             disabled={processing}
             className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center border ${
@@ -76,7 +76,7 @@ const Inbox = () => {
                 <Sparkles className="mr-2 h-5 w-5" /> Process New Emails
               </>
             )}
-          </button>
+          </button> */}
         </header>
 
         {loading ? (
