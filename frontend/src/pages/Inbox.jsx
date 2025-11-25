@@ -72,7 +72,7 @@ const Inbox = () => {
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
           <div>
             <h2 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight mb-2">Inbox</h2>
-            <p className="text-[var(--text-secondary)] font-medium">Manage your emails with AI assistance</p>
+            <p className="text-[var(--text-secondary)] font-medium">Manage your emails with AI assistance  (send email to boardyourtask@gmail.com for testing purpose it would appear in inbox)</p>
           </div>
           
           <div className="flex items-center space-x-3">
