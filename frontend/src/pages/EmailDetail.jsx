@@ -214,7 +214,7 @@ const EmailDetail = () => {
           </div>
 
           <div 
-            className="bg-white text-slate-900 p-6 rounded-xl shadow-sm overflow-auto max-w-none mb-10 leading-relaxed"
+            className="bg-white text-slate-900 p-6 rounded-xl shadow-sm overflow-auto max-w-none mb-10 leading-relaxed whitespace-pre-wrap"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.body) }}
           />
 

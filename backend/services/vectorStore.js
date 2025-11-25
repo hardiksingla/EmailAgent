@@ -7,6 +7,8 @@ const client = new QdrantClient({
 });
 const COLLECTION_NAME = 'emails';
 
+// client.deleteCollection(COLLECTION_NAME)
+
 const vectorStore = {
   initCollection: async () => {
     try {
@@ -48,9 +50,24 @@ const vectorStore = {
         with_payload: true
       });
       console.log(result);
-      // const highScore = result.filter(item=>item.score>0.5)
-      // console.log(highScore)
-      return result;
+      const uniqueEmailIds = new Set();
+      const filteredResult = result.filter(item => {
+        // Use emailId to identify unique emails (chunks share the same emailId)
+        const id = item.payload?.emailId;
+        if (id) {
+          if (!uniqueEmailIds.has(id)) {
+            uniqueEmailIds.add(id);
+            return true;
+          }
+        }
+        return false;
+      });
+      console.log(filteredResult);
+      // return filteredResult;
+
+      const highScore = filteredResult.filter(item=>item.score>0.45)
+      console.log(highScore)
+      return highScore;
     } catch (error) {
       console.error("Vector Search Error:", error);
       throw error;

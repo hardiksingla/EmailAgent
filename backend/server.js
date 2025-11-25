@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,8 +36,15 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/prompts', promptRoutes);
 app.use('/api/general-chat', generalChatRoutes);
 
-app.get('/', (req, res) => {
-  res.send('Email Agent API is running');
+app.use('/api/general-chat', generalChatRoutes);
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 // Start Server
