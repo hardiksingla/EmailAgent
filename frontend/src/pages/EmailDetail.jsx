@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchEmailById, generateReply, chatWithAgent, sendEmail } from '../services/api';
+import { fetchEmailById, generateReply, chatWithAgent, sendEmail, updateEmail } from '../services/api';
 import Layout from '../components/Layout';
-import { ArrowLeft, Sparkles, Send, Loader2, User, Clock, Tag, AlertCircle, MessageSquare, X, Bot } from 'lucide-react';
+import { ArrowLeft, Sparkles, Send, Loader2, User, Clock, Tag, AlertCircle, MessageSquare, X, Bot, CheckCircle, Circle } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
 const EmailDetail = () => {
@@ -17,6 +17,7 @@ const EmailDetail = () => {
   const [generatingReply, setGeneratingReply] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [activeTab, setActiveTab] = useState('email');
 
   // Chat State
   const [showChat, setShowChat] = useState(false);
@@ -107,6 +108,37 @@ const EmailDetail = () => {
     await handleQuickQuestion(query);
   };
 
+  const handleToggleAction = async (index) => {
+    if (!email || !email.actionItems) return;
+
+    const updatedActionItems = [...email.actionItems];
+    const item = updatedActionItems[index];
+
+    // Handle both string and object formats
+    if (typeof item === 'string') {
+        updatedActionItems[index] = {
+            task: item,
+            completed: true
+        };
+    } else {
+        updatedActionItems[index] = {
+            ...item,
+            completed: !item.completed
+        };
+    }
+
+    // Optimistic update
+    setEmail(prev => ({ ...prev, actionItems: updatedActionItems }));
+
+    try {
+        await updateEmail(id, { actionItems: updatedActionItems });
+    } catch (error) {
+        console.error('Failed to update action item', error);
+        // Revert on failure
+        setEmail(prev => ({ ...prev, actionItems: email.actionItems }));
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -177,27 +209,9 @@ const EmailDetail = () => {
                             {email.category || 'Uncategorized'}
                         </span>
                         {email.actionItems && email.actionItems.length > 0 && (
-                             <div className="relative">
-                                <button 
-                                    onClick={() => setShowActions(!showActions)}
-                                    className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center hover:bg-amber-500/20 transition-colors cursor-pointer"
-                                >
-                                    <AlertCircle className="w-3 h-3 mr-1" /> {email.actionItems.length} Actions
-                                </button>
-                                {showActions && (
-                                    <div className="absolute top-full left-0 mt-2 w-64 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl shadow-xl z-50 p-3 animate-in fade-in zoom-in-95 duration-200">
-                                        <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Action Items</h4>
-                                        <ul className="space-y-2">
-                                            {email.actionItems.map((item, idx) => (
-                                                <li key={idx} className="text-sm text-[var(--text-primary)] flex items-start">
-                                                    <span className="mr-2 text-amber-500">•</span>
-                                                    {typeof item === 'string' ? item : item.task || JSON.stringify(item)}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                             </div>
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center">
+                                <AlertCircle className="w-3 h-3 mr-1" /> {email.actionItems.length} Actions
+                            </span>
                         )}
                     </div>
 
@@ -227,24 +241,103 @@ const EmailDetail = () => {
 
             {/* Main Grid */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 relative">
-                {/* Email Content */}
-                <div className={`glass-card p-8 rounded-3xl overflow-y-auto custom-scrollbar bg-[var(--card-bg)] min-h-[400px] transition-all duration-300 ${showChat ? 'lg:col-span-1' : 'lg:col-span-2'}`}>
-                    {email.body ? (
-                        <div 
-                            className="prose prose-invert max-w-none prose-headings:text-[var(--text-primary)] prose-p:text-[var(--text-primary)] prose-a:text-indigo-400 prose-strong:text-[var(--text-primary)] prose-li:text-[var(--text-primary)]"
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.body) }}
-                        />
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                            <div className="w-20 h-20 mb-6 rounded-full bg-[var(--bg-app)] border border-[var(--border-color)] flex items-center justify-center shadow-inner">
-                                <span className="text-4xl opacity-50">📄</span>
+                {/* Email Content & Actions Column */}
+                <div className={`flex flex-col gap-4 h-full min-h-0 transition-all duration-300 ${showChat ? 'lg:col-span-1' : 'lg:col-span-2'}`}>
+                    
+                    {/* Tabs */}
+                    <div className="flex p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] w-fit">
+                        <button
+                            onClick={() => setActiveTab('email')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                activeTab === 'email'
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                            }`}
+                        >
+                            Email Body
+                        </button>
+                        {email.actionItems && email.actionItems.length > 0 && (
+                            <button
+                                onClick={() => setActiveTab('actions')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center ${
+                                    activeTab === 'actions'
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                }`}
+                            >
+                                Action Items
+                                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === 'actions' ? 'bg-white/20 text-white' : 'bg-[var(--bg-app)] text-[var(--text-secondary)]'}`}>
+                                    {email.actionItems.length}
+                                </span>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Content Area */}
+                    <div className="glass-card p-6 rounded-3xl overflow-y-auto custom-scrollbar bg-[var(--card-bg)] flex-1 min-h-0">
+                        {activeTab === 'email' ? (
+                            email.body ? (
+                                <div 
+                                    className="prose prose-invert max-w-none prose-headings:text-[var(--text-primary)] prose-p:text-[var(--text-primary)] prose-a:text-indigo-400 prose-strong:text-[var(--text-primary)] prose-li:text-[var(--text-primary)]"
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.body) }}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                                    <div className="w-20 h-20 mb-6 rounded-full bg-[var(--bg-app)] border border-[var(--border-color)] flex items-center justify-center shadow-inner">
+                                        <span className="text-4xl opacity-50">📄</span>
+                                    </div>
+                                    <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">No Content Available</h3>
+                                    <p className="text-[var(--text-secondary)] max-w-xs mx-auto">
+                                        This email appears to be empty or the content could not be loaded.
+                                    </p>
+                                </div>
+                            )
+                        ) : (
+                            <div className="space-y-4 h-full">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center">
+                                        <AlertCircle className="w-5 h-5 text-amber-500 mr-2" />
+                                        Action Items
+                                    </h3>
+                                    <span className="text-xs font-medium text-[var(--text-secondary)]">
+                                        {email.actionItems.filter(i => typeof i === 'string' ? false : i.completed).length}/{email.actionItems.length} Completed
+                                    </span>
+                                </div>
+                                <div className="space-y-3">
+                                    {email.actionItems.map((item, idx) => {
+                                        const isCompleted = typeof item === 'string' ? false : item.completed;
+                                        const taskText = typeof item === 'string' ? item : item.task;
+                                        
+                                        return (
+                                            <div 
+                                                key={idx} 
+                                                className={`flex items-start p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md ${
+                                                    isCompleted 
+                                                    ? 'bg-green-500/5 border-green-500/20' 
+                                                    : 'bg-[var(--bg-app)] border-[var(--border-color)] hover:border-indigo-500/30'
+                                                }`}
+                                                onClick={() => handleToggleAction(idx)}
+                                            >
+                                                <div className={`mt-0.5 mr-4 shrink-0 transition-colors ${isCompleted ? 'text-green-500' : 'text-[var(--text-secondary)] group-hover:text-indigo-400'}`}>
+                                                    {isCompleted ? <CheckCircle className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className={`text-base font-medium ${isCompleted ? 'text-[var(--text-secondary)] line-through' : 'text-[var(--text-primary)]'}`}>
+                                                        {taskText}
+                                                    </p>
+                                                    {typeof item !== 'string' && item.deadline && (
+                                                        <p className="text-xs text-[var(--text-secondary)] mt-2 flex items-center bg-[var(--card-bg)] w-fit px-2 py-1 rounded-lg border border-[var(--border-color)]">
+                                                            <Clock className="w-3 h-3 mr-1" /> Due: {item.deadline}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">No Content Available</h3>
-                            <p className="text-[var(--text-secondary)] max-w-xs mx-auto">
-                                This email appears to be empty or the content could not be loaded.
-                            </p>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 {/* Chat Panel (Conditionally Rendered/Visible) */}
@@ -269,11 +362,6 @@ const EmailDetail = () => {
                                                 key={idx}
                                                 onClick={() => {
                                                     setChatQuery(question);
-                                                    // We need to trigger the submit manually since state update is async
-                                                    // But handleChatSubmit uses chatQuery state. 
-                                                    // Better to refactor handleChatSubmit or just set state and let user press enter?
-                                                    // User asked for "quick chat buttons", implying one-click.
-                                                    // I'll create a helper or modify handleChatSubmit to accept an argument.
                                                     handleQuickQuestion(question);
                                                 }}
                                                 className="text-xs py-2 px-3 rounded-xl bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-indigo-500/10 hover:text-indigo-400 hover:border-indigo-500/30 transition-all text-left"
